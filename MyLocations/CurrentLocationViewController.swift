@@ -11,13 +11,13 @@ import CoreLocation
 
 class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate {
 
-    @IBOutlet weak var messageLabel: UILabel!
-    @IBOutlet weak var latitudeLabel: UILabel!
+    @IBOutlet weak var messageLabel:   UILabel!
+    @IBOutlet weak var latitudeLabel:  UILabel!
     @IBOutlet weak var longitudeLabel: UILabel!
-    @IBOutlet weak var addressLabel: UILabel!
-    @IBOutlet weak var tagButton: UIButton!
+    @IBOutlet weak var addressLabel:   UILabel!
+    @IBOutlet weak var tagButton:      UIButton!
 
-    @IBOutlet weak var getButton: UIButton!
+    @IBOutlet weak var getButton:      UIButton!
     
     @IBAction func getLocation() {
 
@@ -34,8 +34,16 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
 //        locationManager.delegate = self
 //        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
 //        locationManager.startUpdatingLocation()
-        startLocationManager()
+//        startLocationManager()
+        if updatingLocation {                                                   // p.402
+            stopLocationManager()
+        } else {
+            location          = nil
+            lastLocationError = nil
+            startLocationManager()
+        }
         updateLabels()
+        configureGetButton()                                                    // p.401
     }
 
     // 'CLLocationManager' is where the GPS coordinates come from.
@@ -48,10 +56,23 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
     override func viewDidLoad() {
         super.viewDidLoad()
         updateLabels()
+        configureGetButton()                                                    // p.401
     }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
+    }
+
+    // Function: configureGetButton()
+    //
+    // If the app is currently updating the location then the button's title
+    // becomes 'Stop', otherwise it is 'Get My Location'.
+    func configureGetButton() {
+        if updatingLocation {
+            getButton.setTitle( "Stop", forState: .Normal )
+        } else {
+            getButton.setTitle( "Get My Location", forState: .Normal )
+        }
     }
 
 //  MARK: - CLLocationManagerDelegate
@@ -65,15 +86,39 @@ class CurrentLocationViewController: UIViewController, CLLocationManagerDelegate
         lastLocationError = error
         stopLocationManager()
         updateLabels()
+        configureGetButton()                                                    // p.402
     }
 
+    //   locationManager - didUpdateLocations, p.399
     func locationManager( manager: CLLocationManager!, didUpdateLocations locations: [AnyObject]! ) {
 
         let newLocation = locations.last as! CLLocation
         println( "didUpdateLocation \(newLocation)" )
 
+        // 1
+        if newLocation.timestamp.timeIntervalSinceNow < -5 {
+            return
+        }
+        // 2
+        if newLocation.horizontalAccuracy < 0 {
+            return
+        }
+        // 3
+        if location == nil ||  location!.horizontalAccuracy > newLocation.horizontalAccuracy {
+            // 4
+            lastLocationError   = nil
+            location            = newLocation
+            updateLabels()
+            // 5
+            if newLocation.horizontalAccuracy <= locationManager.desiredAccuracy {
+                println( "*** We're done! ***" )
+                stopLocationManager()
+                configureGetButton()                                            // p.402
+            }
+        }
+
         lastLocationError = nil     // Clear last error meassage...                p.398
-        location = newLocation
+        location          = newLocation
         updateLabels()
     }
 
